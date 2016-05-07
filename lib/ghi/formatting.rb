@@ -16,9 +16,9 @@ module GHI
 
     CURSOR = {
       :up     => lambda { |n| "\e[#{n}A" },
-      :column => lambda { |n| "\e[#{n}G" },
-      :hide   => "\e[?25l",
-      :show   => "\e[?25h"
+        :column => lambda { |n| "\e[#{n}G" },
+          :hide   => "\e[?25l",
+            :show   => "\e[?25h"
     }
 
     THROBBERS = [
@@ -125,16 +125,16 @@ module GHI
       if repo
         if milestone = assigns[:milestone]
           case milestone
-            when '*'    then header << ' with a milestone'
-            when 'none' then header << ' without a milestone'
+          when '*'    then header << ' with a milestone'
+          when 'none' then header << ' without a milestone'
           else
             header.sub! repo, "#{repo} milestone ##{milestone}"
           end
         end
         if assignee = assigns[:assignee]
           header << case assignee
-            when '*'    then ', assigned'
-            when 'none' then ', unassigned'
+          when '*'    then ', assigned'
+          when 'none' then ', unassigned'
           else
             ", assigned to #{format_username assignee}"
           end
@@ -144,10 +144,10 @@ module GHI
         end
       else
         header << case assigns[:filter]
-          when 'created'    then ' you created'
-          when 'mentioned'  then ' that mention you'
-          when 'subscribed' then " you're subscribed to"
-          when 'all'        then ' that you can see'
+        when 'created'    then ' you created'
+        when 'mentioned'  then ' that mention you'
+        when 'subscribed' then " you're subscribed to"
+        when 'all'        then ' that you can see'
         else
           ' assigned to you'
         end
@@ -203,6 +203,99 @@ module GHI
       }
     end
 
+    def extract_milestones_from_issues issues
+      return 'None.' if issues.empty?
+
+      nmax, rmax = %w(number repo).map { |f|
+        issues.sort_by { |i| i[f].to_s.size }.last[f].to_s.size
+      }
+
+      milestones = {}
+      #issues_by_milestone = []
+      milestone_index = 0
+      issues.map { |i|
+        milestone = i['milestone']
+        milestone["issues"] = [] if milestone && !(milestones.key? milestone["id"])
+        if milestone
+          if !milestones.key? milestone["id"]
+            milestones.merge!({milestone["id"] => milestone_index })
+            i.delete "milestone"
+            milestone["issues"] << i
+            issues[milestones[milestone["id"]]] = milestone
+          else
+            pos_of_existent_milestone = milestones[milestone["id"]]
+            i.delete "milestone"
+            issues[pos_of_existent_milestone]["issues"] << i
+            issues.delete i
+          end
+        else
+        issues.delete i
+        end
+        milestone_index += 1
+      }
+      issues
+    end
+
+    def format_issues_by_milestone issues, include_repo
+
+      issues_by_milestone = extract_milestones_from_issues issues
+
+      include_repo and issues.each do |i|
+        %r{/repos/[^/]+/([^/]+)} === i['url'] and i['repo'] = $1
+      end
+
+      issues_by_milestone.map { |milestone|
+        n, title =  milestone['number'], milestone['title'] if milestone["issues"]
+        [
+          " ",
+          (format_number(n.to_s.rjust(5)) if n),
+          (fg(:green) { title } if title),
+          (milestone['issues'].map { |issue|
+            [
+              "\n  ",
+              format_number(issue["number"].to_s.rjust(5)),
+              (fg("aaaaaa") {issue["title"]})
+            ].compact.join ' '
+          } if milestone["issues"])
+        ].compact.join ' '
+      }
+    end
+
+    def format_labels issues, include_repo
+      return 'None.' if issues.empty?
+
+      include_repo and issues.each do |i|
+        %r{/repos/[^/]+/([^/]+)} === i['url'] and i['repo'] = $1
+      end
+
+      nmax, rmax = %w(number repo).map { |f|
+        issues.sort_by { |i| i[f].to_s.size }.last[f].to_s.size
+      }
+
+      issues.map { |i|
+        n, title, labels = i['number'], i['title'], i['labels']
+        l = 9 + nmax + rmax + no_color { format_labels labels }.to_s.length
+        a = i['assignee']
+        a_is_me = a && a['login'] == Authorization.username
+        l += a['login'].to_s.length + 2 if a
+        p = i['pull_request']['html_url'] and l += 2 if i['pull_request']
+        c = i['comments']
+        l += c.to_s.length + 1 unless c == 0
+        m = i['milestone']
+        [
+          " ",
+          (i['repo'].to_s.rjust(rmax) if i['repo']),
+          format_number(n.to_s.rjust(nmax)),
+          truncate(title, l),
+          (format_labels(labels) unless assigns[:dont_print_labels]),
+          (fg(:green) { m['title'] } if m),
+          (fg('aaaaaa') { c } unless c == 0),
+          (fg('aaaaaa') { '↑' } if p),
+          (fg(a_is_me ? :yellow : :gray) { "@#{a['login']}" } if a),
+          (fg('aaaaaa') { '‡' } if m)
+        ].compact.join ' '
+      }
+    end
     def format_number n
       colorize? ? "#{bright { n }}:" : "#{n} "
     end
@@ -254,8 +347,8 @@ EOF
     def format_comment c, width = columns
       <<EOF
 @#{c['user']['login']} commented \
-#{format_date DateTime.parse(c['created_at'])}:
-#{indent c['body'], 4, width}
+      #{format_date DateTime.parse(c['created_at'])}:
+      #{indent c['body'], 4, width}
 
 
 EOF
@@ -264,9 +357,9 @@ EOF
     def format_event e, width = columns
       reference = e['commit_id']
       <<EOF
-#{bright { '⁕' }} #{format_event_type(e['event'])} by @#{e['actor']['login']}\
-#{" through #{underline { reference[0..6] }}" if reference} \
-#{format_date DateTime.parse(e['created_at'])}
+      #{bright { '⁕' }} #{format_event_type(e['event'])} by @#{e['actor']['login']}\
+      #{" through #{underline { reference[0..6] }}" if reference} \
+      #{format_date DateTime.parse(e['created_at'])}
 
 EOF
     end
@@ -469,7 +562,7 @@ EOF
 
       # Code blocks
       string.gsub!(/(?<indent>^\ {#{indent}})(```)\s*(?<lang>\w*$)(\n)(?<code>.+?)(\n)(^\ {#{indent}}```$)/m) do |m|
-        highlight(Regexp.last_match)
+      highlight(Regexp.last_match)
       end
 
       string
@@ -478,19 +571,19 @@ EOF
     def format_date date, suffix = true
       days = (interval = DateTime.now - date).to_i.abs
       string = if days.zero?
-        seconds, _ = interval.divmod Rational(1, 86400)
-        hours, seconds = seconds.divmod 3600
-        minutes, seconds = seconds.divmod 60
-        if hours > 0
-          "#{hours} hour#{'s' unless hours == 1}"
-        elsif minutes > 0
-          "#{minutes} minute#{'s' unless minutes == 1}"
-        else
-          "#{seconds} second#{'s' unless seconds == 1}"
-        end
-      else
-        "#{days} day#{'s' unless days == 1}"
-      end
+                 seconds, _ = interval.divmod Rational(1, 86400)
+                 hours, seconds = seconds.divmod 3600
+                 minutes, seconds = seconds.divmod 60
+                 if hours > 0
+                   "#{hours} hour#{'s' unless hours == 1}"
+                 elsif minutes > 0
+                   "#{minutes} minute#{'s' unless minutes == 1}"
+                 else
+                   "#{seconds} second#{'s' unless seconds == 1}"
+                 end
+               else
+                 "#{days} day#{'s' unless days == 1}"
+               end
       ago = interval < 0 ? 'from now' : 'ago' if suffix
       [string, ago].compact.join ' '
     end

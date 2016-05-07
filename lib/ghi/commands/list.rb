@@ -116,12 +116,16 @@ module GHI
       end
 
       def execute
+        ## no github é possível assinar um usuário com @<user>
+        ## args é definido na classe Command, por isso é acessível nesse ponto.
+        ## Tudo que é passado para o ghi, é armazenado na array args
         if index = args.index { |arg| /^@/ === arg }
+
+          ## o ghi precisa extrair o @ de @daviCarlos. para isso o range [1..-1]
           assigns[:assignee] = args.delete_at(index)[1..-1]
         end
 
         begin
-          options.parse! args
           @repo ||= ARGV[0] if ARGV.one?
         rescue OptionParser::InvalidOption => e
           fallback.parse! e.args
@@ -135,6 +139,8 @@ module GHI
           assigns[:sort] ||= 'created'
           assigns[:direction] = 'asc'
         end
+        ## web é uma opção que pode ser passada como argumento do ghi
+        ## Na linha 64 ele é setado para true
         if web
           Web.new(repo || 'dashboard').open 'issues', assigns
         else
@@ -143,10 +149,16 @@ module GHI
             print header = format_issues_header
             print "\n" unless paginate?
           end
+          ## Res é um objeto GHI::Client::Response
+          ## api ou é um Client.new ou é um Client que já foi criado.
+          ## api.get irá chamar o método request, responsável por instanciar
+          ## um objeto Response.
           res = throb(
             0, format_state(assigns[:state], quiet ? CURSOR[:up][1] : '#')
           ) { api.get uri, assigns }
           print "\r#{CURSOR[:up][1]}" if header && paginate?
+          puts "="*80
+          #puts res.body.inspect
           page header do
             issues = res.body
 
@@ -164,7 +176,7 @@ module GHI
             if verbose
               puts issues.map { |i| format_issue i }
             else
-              puts format_issues(issues, repo.nil?)
+              puts format_issues_by_milestone(issues, repo.nil?)
             end
             break unless res.next_page
             res = throb { api.get res.next_page }

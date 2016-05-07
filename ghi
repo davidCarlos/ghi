@@ -80,8 +80,14 @@ EOF
       if command_name == 'help'
         Commands::Help.execute command_args, option_parser.banner
       else
+        ## fetch_alias irá tratar a situação em que o argumento pode ser
+        ## o número de uma issue. Caso não seja, vai retonar o comando informado pelo
+        ## usuário, se obviamente ele for reconhecido pelo ghfor reconhecido pelo ghi
         command_name = fetch_alias command_name, command_args
         begin
+          ## Commands.const_get irá tentar carregar um dos modulos de Commands
+          ## Caso command_name não esteja dentro da pasta commands, um erro será
+          ## lançado
           command = Commands.const_get command_name.capitalize
         rescue NameError
           abort "ghi: '#{command_name}' is not a ghi command. See 'ghi --help'."
@@ -91,6 +97,8 @@ EOF
         Commands::Help.execute [command_name] if command_args.first == '--help'
 
         begin
+          ## ghi irá executar o método execute, do module carregado pelo
+          #Commands.const_get.
           command.execute command_args
         rescue OptionParser::ParseError, Commands::MissingArgument => e
           warn "#{e.message.capitalize}\n"
@@ -1889,7 +1897,7 @@ EOF
       def execute
         # TODO: Investigate whether or not this variable is needed
         global = true
-        
+
         options.parse! args.empty? ? %w(-h) : args
 
         if action == 'auth'
@@ -2989,7 +2997,7 @@ module GHI
           fallback.parse! e.args
           retry
         end
-        
+
         require_repo
         res = throb { api.get "/repos/#{repo}" }.body
 
