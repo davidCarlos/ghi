@@ -237,7 +237,6 @@ module GHI
     end
 
     def format_issues_by_milestone issues, include_repo
-
       issues_by_milestone = extract_milestones_from_issues issues
 
       include_repo and issues.each do |i|
@@ -247,8 +246,8 @@ module GHI
       issues_by_milestone.map { |milestone|
         n, title =  milestone['number'], milestone['title'] if milestone["issues"]
         [
-          " ",
-          (format_number(n.to_s.rjust(5)) if n),
+          "\n  ",
+          (("Milestone: ") if milestone["issues"]),
           (fg(:green) { title } if title),
           (milestone['issues'].map { |issue|
             [

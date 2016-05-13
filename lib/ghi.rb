@@ -12,14 +12,9 @@ module GHI
     attr_reader :current_command
 
     def execute args
-      puts "*"*80
-      puts ARGV
-      puts "*"*80
       STDOUT.sync = true
       @current_command = "#{$0} #{args.join(' ')}".freeze
 
-      puts "received args"
-      puts args.inspect
       double_dash = args.index { |arg| arg == '--' }
       ## Um comando é identificado, quando a string não começa com '-'
       ## O index vai retornar a posição da primeira string  que não comece com '-'. Nesse caso, essa string será um comando do ghi

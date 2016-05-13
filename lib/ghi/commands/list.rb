@@ -111,6 +111,11 @@ module GHI
 	    assigns[:org] = org
             @repo = nil
           end
+            opts.on(
+              '--by-milestone', 'filter by milestone'
+            ) do
+              assigns[:by_m] = true
+            end
           opts.separator ''
         end
       end
@@ -126,6 +131,7 @@ module GHI
         end
 
         begin
+          options.parse! args
           @repo ||= ARGV[0] if ARGV.one?
         rescue OptionParser::InvalidOption => e
           fallback.parse! e.args
@@ -157,8 +163,6 @@ module GHI
             0, format_state(assigns[:state], quiet ? CURSOR[:up][1] : '#')
           ) { api.get uri, assigns }
           print "\r#{CURSOR[:up][1]}" if header && paginate?
-          puts "="*80
-          #puts res.body.inspect
           page header do
             issues = res.body
 
@@ -176,7 +180,11 @@ module GHI
             if verbose
               puts issues.map { |i| format_issue i }
             else
-              puts format_issues_by_milestone(issues, repo.nil?)
+              if assigns[:by_m]
+                puts format_issues_by_milestone(issues, repo.nil?)
+              else
+                puts format_issues(issues, repo.nil?)
+              end
             end
             break unless res.next_page
             res = throb { api.get res.next_page }
