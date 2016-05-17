@@ -16,14 +16,9 @@ module GHI
       @current_command = "#{$0} #{args.join(' ')}".freeze
 
       double_dash = args.index { |arg| arg == '--' }
-      ## Um comando é identificado, quando a string não começa com '-'
-      ## O index vai retornar a posição da primeira string  que não comece com '-'. Nesse caso, essa string será um comando do ghi
       if index = args.index { |arg| arg !~ /^-/ }
         if double_dash.nil? || index < double_dash
           command_name = args.delete_at index
-          ## Nesse ponto args ficará vazio caso o valor de index seja 0
-          ## slice! irá deletar de args, o range entre index, e args.length e retornará
-          ## uma nova array, com o range de elementos deletados de args.
           command_args = args.slice! index, args.length
         end
       end
@@ -66,9 +61,6 @@ EOF
         warn e.message.capitalize
         abort option_parser.banner
       end
-      ## Encerra option_parser
-
-      # Comando padrão
       if command_name.nil?
         command_name = 'list'
       end
@@ -87,12 +79,6 @@ EOF
         Commands::Help.execute [command_name] if command_args.first == '--help'
 
         begin
-          ### O que foi feito até agora
-          # 1: Tratou com o fetch_alias o comando a ser executado
-          # Se o usuário passar o nome curto do comando, o ghi vai retornar o comando
-          # correspondente.
-          # 2: Removeu de args o range entre a posição de command e o restante dos argumentos.
-          # Esse range removido, foi armazenado em command_args
           command.execute command_args
         rescue OptionParser::ParseError, Commands::MissingArgument => e
           warn "#{e.message.capitalize}\n"
@@ -163,9 +149,6 @@ EOF
     )
 
 
-    ## O fetch_alias serve para o caso em que o usuário passa o nome reduzido
-    ## do comando. Se o usuário passar o nome completo do comando, o fetch_alias
-    ## automáticamente retorna esse comando.
     def fetch_alias command, args
       return command unless fetched = ALIASES[command]
 
@@ -179,9 +162,6 @@ EOF
         fetched.unshift((edit_options & args).empty? ? 'show' : 'edit')
       end
 
-      # a = [1,2,3]
-      # a = a.shift; a => 1
-      # fetched guarda o [command], ou seja, o comando a ser executado. a.g list
       command = fetched.shift
       args.unshift(*fetched)
       command

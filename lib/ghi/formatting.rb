@@ -211,7 +211,7 @@ module GHI
       }
 
       milestones = {}
-      #issues_by_milestone = []
+      extracted_milestones = []
       milestone_index = 0
       issues.map { |i|
         milestone = i['milestone']
@@ -221,32 +221,25 @@ module GHI
             milestones.merge!({milestone["id"] => milestone_index })
             i.delete "milestone"
             milestone["issues"] << i
-            issues[milestones[milestone["id"]]] = milestone
+            extracted_milestones << milestone
+            milestone_index += 1
           else
             pos_of_existent_milestone = milestones[milestone["id"]]
             i.delete "milestone"
-            issues[pos_of_existent_milestone]["issues"] << i
-            issues.delete i
+            extracted_milestones[pos_of_existent_milestone]["issues"] << i
           end
-        else
-        issues.delete i
         end
-        milestone_index += 1
       }
-      issues
+      extracted_milestones
     end
 
     def format_issues_by_milestone issues, include_repo
       issues_by_milestone = extract_milestones_from_issues issues
 
-      include_repo and issues.each do |i|
-        %r{/repos/[^/]+/([^/]+)} === i['url'] and i['repo'] = $1
-      end
-
       issues_by_milestone.map { |milestone|
         n, title =  milestone['number'], milestone['title'] if milestone["issues"]
         [
-          "\n  ",
+          ("\n  " if milestone["issues"]),
           (("Milestone: ") if milestone["issues"]),
           (fg(:green) { title } if title),
           (milestone['issues'].map { |issue|
@@ -260,41 +253,6 @@ module GHI
       }
     end
 
-    def format_labels issues, include_repo
-      return 'None.' if issues.empty?
-
-      include_repo and issues.each do |i|
-        %r{/repos/[^/]+/([^/]+)} === i['url'] and i['repo'] = $1
-      end
-
-      nmax, rmax = %w(number repo).map { |f|
-        issues.sort_by { |i| i[f].to_s.size }.last[f].to_s.size
-      }
-
-      issues.map { |i|
-        n, title, labels = i['number'], i['title'], i['labels']
-        l = 9 + nmax + rmax + no_color { format_labels labels }.to_s.length
-        a = i['assignee']
-        a_is_me = a && a['login'] == Authorization.username
-        l += a['login'].to_s.length + 2 if a
-        p = i['pull_request']['html_url'] and l += 2 if i['pull_request']
-        c = i['comments']
-        l += c.to_s.length + 1 unless c == 0
-        m = i['milestone']
-        [
-          " ",
-          (i['repo'].to_s.rjust(rmax) if i['repo']),
-          format_number(n.to_s.rjust(nmax)),
-          truncate(title, l),
-          (format_labels(labels) unless assigns[:dont_print_labels]),
-          (fg(:green) { m['title'] } if m),
-          (fg('aaaaaa') { c } unless c == 0),
-          (fg('aaaaaa') { '↑' } if p),
-          (fg(a_is_me ? :yellow : :gray) { "@#{a['login']}" } if a),
-          (fg('aaaaaa') { '‡' } if m)
-        ].compact.join ' '
-      }
-    end
     def format_number n
       colorize? ? "#{bright { n }}:" : "#{n} "
     end
