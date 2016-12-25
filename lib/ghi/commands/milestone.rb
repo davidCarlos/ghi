@@ -25,6 +25,9 @@ EOF
           opts.on '-l', '--list', 'list milestones' do
             self.action = 'index'
           end
+          opts.on '-n', '--new', 'create milestone' do
+            self.action = 'create'
+          end
           opts.on '-c', '--[no-]closed', 'show closed milestones' do |closed|
             assigns[:state] = closed ? 'closed' : 'open'
           end
@@ -90,10 +93,7 @@ EOF
           fallback.parse! e.args
         end
 
-        milestone and case action
-          when 'create' then self.action = 'update'
-          when 'index'  then self.action = 'show'
-        end
+        self.action = 'show' if action == 'index'
 
         if reverse
           assigns[:sort] ||= 'created'
